@@ -1,0 +1,22 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gewichte-Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#eef0f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#12161d" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Gewichte">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css"></head><body>
+<main>
+<h1>Gewichte-Tracker</h1>
+<nav role="tablist"><button role="tab" id="t1" aria-selected="true">Training</button><button role="tab" id="t2" aria-selected="false">Neues Workout</button><button role="tab" id="t3" aria-selected="false">Verlauf</button></nav>
+<section id="v1"></section>
+<section id="v2" hidden>
+<div class="card"><label for="src" class="mute">Workout-Text einfügen</label><textarea id="src" placeholder="Super Set 1x3&#10;Straight Leg Deadlift - 10 reps&#10;Chest Press - 10 reps"></textarea><button class="btn" id="go">Text auslesen</button></div>
+<div id="prev"></div></section><section id="v3" hidden></section>
+</main>
+<script src="app.js"></script>
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script>
+</body></html>
