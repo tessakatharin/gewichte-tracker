@@ -1,7 +1,7 @@
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 const K='wt1';let S={ex:{},al:{},tpl:[],ses:[]};
 try{S=Object.assign(S,JSON.parse(localStorage.getItem(K)||'{}'))}catch(e){}
-const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}pushCloud()};
 const $=id=>document.getElementById(id);
 const norm=s=>s.toLowerCase().replace(/[^a-z0-9äöüß ]/g,' ').replace(/\s+/g,' ').trim();
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -14,6 +14,7 @@ function parse(txt){
  for(const l of L){
   if(m=l.match(/^workout\s*:\s*(.+)/i)){w.name=m[1];continue}
   if(m=l.match(/^(?:super|straight)[\s-]*sets?\s*#?(\d+)?\s*[:,.-]?\s*(?:[x×]\s*(\d+)|\(?(\d+)\s*rounds?\)?)(?:\s*rounds?)?\s*(?:\((.*)\))?\s*$/i)){b={t:'ss',title:(/^straight/i.test(l)?'Straight Set ':'Super Set ')+(m[1]||w.blocks.length+1),rounds:+(m[2]||m[3]),ex:[],notes:[]};w.blocks.push(b);continue}
+  if(m=l.match(/^timed\s*ladder\s*#?(\d+)\s*:?\s*$/i)){b={t:'tb',title:'Timed Ladder '+m[1],rounds:null,iv:'Zeitleiter',ex:[],notes:[]};w.blocks.push(b);continue}
   if(m=l.match(/^pod\s*#?(\d+)\s*:?\s*$/i)){b={t:'ss',title:'POD '+m[1],rounds:null,ex:[],notes:[]};w.blocks.push(b);continue}
   if(m=l.match(/^(?:tabata|circuit)\s*#?(\d+)\s*:?\s*$/i)){b={t:'tb',title:'Tabata '+m[1],rounds:circ,iv:inter,ex:[],notes:[]};w.blocks.push(b);continue}
   if(m=l.match(/^cool\s*-?down\s*:?\s*(.*)/i)){b={t:'cd',title:'Cooldown',text:m[1],ex:[],notes:[]};w.blocks.push(b);continue}
@@ -23,6 +24,7 @@ function parse(txt){
    if(m=l.match(/repeat circuit\s*(\d+)/i))circ=+m[1];
    w.notes.push(l);continue}
   if(b.t==='cd'){b.text+=' '+l;continue}
+  if(b.t==='tb'&&(m=l.match(/^(\d+)\s*sec\w*\s*[-–—:]?\s*(.+)$/i))){let n=m[2].trim(),x='';const r=n.match(/^(.*?)\s*\(([^)]*(?:sec|each|R\/L)[^)]*)\)\s*$/i);if(r){n=r[1].trim();x=' ('+r[2]+')'}const q=norm(n),f=b.ex.find(e=>norm(e.name)===q);if(f){f.reps+=', '+m[1]+' s'+x}else b.ex.push({name:n,reps:m[1]+' s'+x});continue}
   if(b.t==='tb'&&(m=l.match(/^move\s*\d+\s*[:\-–—]\s*(.+)$/i))){let n=m[1],r=n.match(/^(.*?)\s+rest\b(.*)$/i);if(r){n=r[1];b.notes.push('Rest'+r[2])}b.ex.push({name:n.trim()});continue}
   if(b.t==='ss'){const q=l.replace(/^move\s*\d+\s*[:\-–—]\s*/i,'');m=q.match(/^(.+?)\s*[-–—:]\s*(\d.*)$/)||q.match(/^(.+?)\s+(\d+(?:\s*-\s*\d+)?\s*(?:reps?|wdh\.?)\b.*)$/i);if(m){const k=m[2].match(/^(.*?[\s\d]|)[x×]\s*(\d+)\b/i);b.ex.push({name:m[1].trim(),reps:m[2].trim(),n:k?+k[2]:null})}else if(!/\d/.test(q))b.ex.push({name:q});else w.bad.push(l);continue}
   w.bad.push(l)}
@@ -168,6 +170,27 @@ function showImp(msg){
     ex[k]=(ex[k]||[]).concat(v);if(cell.note)nt.push(r.name+': '+cell.note)});
    if(Object.keys(ex).length){S.ses.push({d:c.d,tpl:tn,ex,n:nt.join('\n')});made++}});
   save();IM=null;imv=0;showHist(made+' Einheiten importiert'+(skip?', '+skip+' übersprungen (Datum und Workout schon vorhanden)':'')+(off?', '+off+' ohne Workout-Auswahl nicht importiert':'')+'.')}catch(e){showImp('Fehler beim Import: '+e.message)}}}
+let CL=null,CT=0;
+const CH=100000,cs=t=>{const e=$('cs');if(e)e.textContent=t};
+async function cloudPull(c){const m=await c.doc('meta').get();if(!m.exists)return null;const n=m.data().n||0;let s='';for(let i=0;i<n;i++){const d=await c.doc('p'+i).get();if(!d.exists)return null;s+=d.data().t}return JSON.parse(s)}
+async function cloudPush(){const s=JSON.stringify(S),ch=[];let p=0;
+ while(p<s.length){let e=Math.min(p+CH,s.length);const k=s.charCodeAt(e-1);if(k>=0xD800&&k<=0xDBFF&&e<s.length)e--;ch.push(s.slice(p,e));p=e}
+ const n=ch.length||1,m=await CL.doc('meta').get(),on=m.exists?m.data().n||0:0;
+ for(let i=0;i<n;i++)await CL.doc('p'+i).set({t:ch[i]||''});
+ await CL.doc('meta').set({n,at:new Date().toISOString()});
+ for(let i=n;i<on;i++)await CL.doc('p'+i).delete();
+ cs('Im Konto gesichert ✓ '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}))}
+function pushCloud(){if(!CL)return;clearTimeout(CT);CT=setTimeout(async()=>{try{await cloudPush()}catch(e){cs('Konto-Speicher: Sichern fehlgeschlagen ('+((e&&e.code)||'Fehler')+'). Bitte Backup speichern.')}},700)}
+async function cloudInit(){
+ try{const db=await claude.use('db'),us=await claude.use('user'),id=us&&await us.id();
+  if(!db||!id){cs('Nur lokal gespeichert.');return}
+  const c=db.collection('data/users/'+id),R=await cloudPull(c),empty=!S.tpl.length&&!S.ses.length&&!Object.keys(S.ex).length;
+  CL=c;
+  if(R&&empty){S=Object.assign({ex:{},al:{},tpl:[],ses:[]},R);try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}ses=null;showTrain();cs('Aus dem Konto geladen ✓')}
+  else if(R){merge(R);showTrain()}
+  else if(!empty)await cloudPush();
+  else cs('Konto-Speicher bereit.')}
+ catch(e){CL=null;cs('Nur lokal gespeichert.')}}
 let BK=null,bc=0;
 async function saveFile(f,t,mime){
  try{const d=await claude.use('downloads');if(d){await d.save({filename:f,data:t});return true}}catch(e){if(e&&e.code==='declined')return true}
@@ -213,5 +236,5 @@ function showHist(msg){if(imv===2){showBk(msg);return}if(imv){showImp(msg);retur
  $('hd').onclick=()=>{if(!dl){dl=1;showHist();return}S.ses.splice(ed,1);save();ed=null;dl=0;showHist('Einheit gelöscht.')};
  $('hs').onclick=()=>{el.querySelectorAll('input[data-x]').forEach(i=>{const a=s.ex[ks[i.dataset.x]],j=+i.dataset.j,t=i.value.trim(),n=num(t);a[j]=t===''?null:/^eg$/i.test(t)?'':isNaN(n)?a[j]:Math.round(n*2)/2});s.up={};el.querySelectorAll('[data-eu]').forEach(i=>{if(i.checked)s.up[ks[i.dataset.eu]]=1});s.d=$('ed').value||s.d;s.tpl=$('en').value.trim()||s.tpl;s.n=$('enn').value.trim();save();ed=null;showHist('Einheit aktualisiert.')}}
 function tab(n){$('v1').hidden=n!==1;$('v2').hidden=n!==2;$('v3').hidden=n!==3;$('t3').setAttribute('aria-selected',n===3);$('t1').setAttribute('aria-selected',n===1);$('t2').setAttribute('aria-selected',n===2)}
-$('t1').onclick=()=>{tab(1);showTrain()};$('t2').onclick=()=>tab(2);$('t3').onclick=()=>{ed=null;dl=0;imv=0;tab(3);showHist()};
+$('t1').onclick=()=>{tab(1);showTrain()};$('t2').onclick=()=>tab(2);$('t3').onclick=()=>{ed=null;dl=0;imv=0;tab(3);showHist()};cloudInit();
 showTrain();
