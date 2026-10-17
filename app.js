@@ -14,7 +14,7 @@ function parse(txt){
  for(const l of L){
   if(m=l.match(/^workout\s*:\s*(.+)/i)){w.name=m[1];continue}
   if(m=l.match(/^(?:super|straight)[\s-]*sets?\s*#?(\d+)?\s*[:,.-]?\s*(?:[x×]\s*(\d+)|\(?(\d+)\s*rounds?\)?)(?:\s*rounds?)?\s*(?:\((.*)\))?\s*$/i)){b={t:'ss',title:(/^straight/i.test(l)?'Straight Set ':'Super Set ')+(m[1]||w.blocks.length+1),rounds:+(m[2]||m[3]),ex:[],notes:[]};w.blocks.push(b);continue}
-  if(m=l.match(/^timed\s*ladder\s*#?(\d+)\s*:?\s*$/i)){b={t:'tb',title:'Timed Ladder '+m[1],rounds:null,iv:'Zeitleiter',ex:[],notes:[]};w.blocks.push(b);continue}
+  if(m=l.match(/^timed\s*ladder\s*#?(\d+)\b.*$/i)){b={t:'tb',title:'Timed Ladder '+m[1],rounds:null,iv:'Zeitleiter',ex:[],notes:[]};w.blocks.push(b);continue}
   if(m=l.match(/^pod\s*#?(\d+)\s*:?\s*$/i)){b={t:'ss',title:'POD '+m[1],rounds:null,ex:[],notes:[]};w.blocks.push(b);continue}
   if(m=l.match(/^(?:tabata|circuit)\s*#?(\d+)\s*:?\s*$/i)){b={t:'tb',title:'Tabata '+m[1],rounds:circ,iv:inter,ex:[],notes:[]};w.blocks.push(b);continue}
   if(m=l.match(/^cool\s*-?down\s*:?\s*(.*)/i)){b={t:'cd',title:'Cooldown',text:m[1],ex:[],notes:[]};w.blocks.push(b);continue}
@@ -24,7 +24,7 @@ function parse(txt){
    if(m=l.match(/repeat circuit\s*(\d+)/i))circ=+m[1];
    w.notes.push(l);continue}
   if(b.t==='cd'){b.text+=' '+l;continue}
-  if(b.t==='tb'&&(m=l.match(/^(\d+)\s*sec\w*\s*[-–—:]?\s*(.+)$/i))){let n=m[2].trim(),x='';const r=n.match(/^(.*?)\s*\(([^)]*(?:sec|each|R\/L)[^)]*)\)\s*$/i);if(r){n=r[1].trim();x=' ('+r[2]+')'}const q=norm(n),f=b.ex.find(e=>norm(e.name)===q);if(f){f.reps+=', '+m[1]+' s'+x}else b.ex.push({name:n,reps:m[1]+' s'+x});continue}
+  if(b.t==='tb'&&(m=l.match(/^(\d+)\s*sec\w*\.?\s*[-–—:]?\s*(.+)$/i))){let n=m[2].trim(),x='';const r=n.match(/^(.*?)\s*\(([^)]*(?:sec|each|R\/L)[^)]*)\)\s*$/i);if(r){n=r[1].trim();x=' ('+r[2]+')'}const q=norm(n),f=b.ex.find(e=>norm(e.name)===q);if(f){f.reps+=', '+m[1]+' s'+x}else b.ex.push({name:n,reps:m[1]+' s'+x});continue}
   if(b.t==='tb'&&(m=l.match(/^move\s*\d+\s*[:\-–—]\s*(.+)$/i))){let n=m[1],r=n.match(/^(.*?)\s+rest\b(.*)$/i);if(r){n=r[1];b.notes.push('Rest'+r[2])}b.ex.push({name:n.trim()});continue}
   if(b.t==='ss'){const q=l.replace(/^move\s*\d+\s*[:\-–—]\s*/i,'');m=q.match(/^(.+?)\s*[-–—:]\s*(\d.*)$/)||q.match(/^(.+?)\s+(\d+(?:\s*-\s*\d+)?\s*(?:reps?|wdh\.?)\b.*)$/i);if(m){const k=m[2].match(/^(.*?[\s\d]|)[x×]\s*(\d+)\b/i);b.ex.push({name:m[1].trim(),reps:m[2].trim(),n:k?+k[2]:null})}else if(!/\d/.test(q))b.ex.push({name:q});else w.bad.push(l);continue}
   w.bad.push(l)}
